@@ -1,15 +1,14 @@
 using System.Reflection;
 using DAWPresence;
 using DiscordRPC;
-using Microsoft.Win32;
+using System.IO;
 
 namespace DAWPresenceBackgroundApp;
 
 public class ProcessCode
 {
     private const string AppVersion = "beta-0.2.6.3";
-    private const string CreditText = "DAWPresence by @myuuiii";
-    private const string StartupRegistryPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    private const string CreditText = "DAWPresence";
     private static DiscordRpcClient? _client;
     private static DateTime? _startTime;
 
@@ -26,12 +25,12 @@ public class ProcessCode
             using var httpClient = new HttpClient();
             var latestVersion =
                 (await httpClient.GetStringAsync(
-                    "https://raw.githubusercontent.com/Myuuiii/DAWPresence/master/VERSION.txt")).Trim();
+                    "https://raw.githubusercontent.com/TheXploler/DAWPresenceF/refs/heads/master/VERSION.txt")).Trim();
             Console.WriteLine($"Latest version: {latestVersion}");
 
             if (latestVersion != AppVersion)
                 MessageBox.Show(
-                    $"A new version of DAW Presence is available: {latestVersion}. Please download it from the official GitHub page https://github.com/Myuuiii/DAWPresence",
+                    $"A new version of DAW Presence is available: {latestVersion}. Please download it from the official GitHub page https://github.com/TheXploler/DAWPresenceF",
                     "DAW Presence", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception e)
@@ -115,35 +114,51 @@ public class ProcessCode
     /// <summary>
     ///     Adds or removes this application from Windows startup for the current user.
     /// </summary>
-    /// <param name="appName">The name to use for the registry entry.</param>
+    /// <param name="appName">The name to use for the shortcut.</param>
     /// <param name="exePath">The full path to the executable (for add).</param>
     /// <param name="add">True to add to startup, false to remove.</param>
     public static void SetStartup(string appName, string? exePath, bool add)
     {
         try
         {
-            using var key = OpenStartupRegistryKey();
-            if (key == null)
-            {
-                Console.WriteLine("Failed to open registry key for startup.");
-                return;
-            }
+            string startupFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            string shortcutPath = Path.Combine(startupFolderPath, appName + ".lnk");
 
             if (add)
             {
                 if (string.IsNullOrWhiteSpace(exePath))
                 {
-                    Console.WriteLine("Executable path is null or empty. Cannot add to startup.");
+                    Console.WriteLine("Executable path is null or empty. Cannot add to startup");
                     return;
                 }
 
-                key.SetValue(appName, $"\"{exePath}\"");
-                Console.WriteLine($"Added {appName} to startup with path: {exePath}");
+                Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null)
+                {
+                    Console.WriteLine("Failed to get WScript.Shell type");
+                    return;
+                }
+
+                dynamic shell = Activator.CreateInstance(shellType)!;
+                var shortcut = shell.CreateShortcut(shortcutPath);
+                shortcut.TargetPath = exePath;
+                shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
+                shortcut.Description = "DAW Presence Startup";
+                shortcut.Save();
+
+                Console.WriteLine($"Added {appName} shortcut to startup");
             }
             else
             {
-                key.DeleteValue(appName, false);
-                Console.WriteLine($"Removed {appName} from startup.");
+                if (File.Exists(shortcutPath))
+                {
+                    File.Delete(shortcutPath);
+                    Console.WriteLine($"Removed {appName} shortcut from startup");
+                }
+                else
+                {
+                    Console.WriteLine($"Startup shortcut for {appName} not found");
+                }
             }
         }
         catch (Exception ex)
@@ -162,14 +177,5 @@ public class ProcessCode
     public static void RemoveFromStartup(string appName)
     {
         SetStartup(appName, null, false);
-    }
-
-    /// <summary>
-    ///     Opens the registry key for Windows startup (CurrentUser).
-    /// </summary>
-    /// <returns>The registry key, or null if it cannot be opened.</returns>
-    private static RegistryKey? OpenStartupRegistryKey()
-    {
-        return Registry.CurrentUser.OpenSubKey(StartupRegistryPath, true);
     }
 }
