@@ -9,7 +9,7 @@ public partial class AbletonLive12Suite : Daw
         ProcessName = "Ableton Live 12 Suite";
         DisplayName = ProcessName;
         ImageKey = "ableton";
-        ApplicationId = "1053952444859686983";
+        ApplicationId = "1474339498492952719";
         WindowTrim = " - " + DisplayName;
         TitleOffset = 24;
     }
