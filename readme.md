@@ -1,3 +1,4 @@
+## This Fork Just Fixes The Startup Bug And Changes The Ableton Logo To A More Sleek Version
 ![](https://cdn.myuuiii.com/projects/dawpresence/DAWRichPresence_v3.png)
 
 A Discord Rich Presence app for several DAWs like FL Studio and Ableton.
